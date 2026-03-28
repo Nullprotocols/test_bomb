@@ -799,19 +799,19 @@ async def show_admin_panel(target, user_id):
     """target can be a CallbackQuery or Message"""
     keyboard = [
         [InlineKeyboardButton("👥 List Users", callback_data="admin_list_users")],
-        InlineKeyboardButton("🕒 Recent Users", callback_data="admin_recent_users")],
+        [InlineKeyboardButton("🕒 Recent Users", callback_data="admin_recent_users")],
         [InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast")],
-        InlineKeyboardButton("📨 Direct Message", callback_data="admin_dm")],
+        [InlineKeyboardButton("📨 Direct Message", callback_data="admin_dm")],
         [InlineKeyboardButton("🔍 User Lookup", callback_data="admin_lookup")],
-        InlineKeyboardButton("🚫 Ban User", callback_data="admin_ban")],
+        [InlineKeyboardButton("🚫 Ban User", callback_data="admin_ban")],
         [InlineKeyboardButton("🔓 Unban User", callback_data="admin_unban")],
-        InlineKeyboardButton("🗑 Delete User", callback_data="admin_delete")],
+        [InlineKeyboardButton("🗑 Delete User", callback_data="admin_delete")],
         [InlineKeyboardButton("➕ Add Admin", callback_data="admin_addadmin")],
-        InlineKeyboardButton("➖ Remove Admin", callback_data="admin_removeadmin")],
+        [InlineKeyboardButton("➖ Remove Admin", callback_data="admin_removeadmin")],
         [InlineKeyboardButton("🛡️ Protect Number", callback_data="admin_protect")],
-        InlineKeyboardButton("🛡️ Unprotect Number", callback_data="admin_unprotect")],
+        [InlineKeyboardButton("🛡️ Unprotect Number", callback_data="admin_unprotect")],
         [InlineKeyboardButton("📜 List Protected", callback_data="admin_list_protected")],
-        InlineKeyboardButton("💾 Backup", callback_data="admin_backup")],
+        [InlineKeyboardButton("💾 Backup", callback_data="admin_backup")],
     ]
     if is_owner(user_id):
         keyboard.append([InlineKeyboardButton("💾 Full Backup (Owner)", callback_data="admin_fullbackup")])
