@@ -31,7 +31,7 @@ OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 PORT = int(os.getenv("PORT", 10000))
 WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL")
 if not WEBHOOK_URL:
-    WEBHOOK_URL = "https://test-bomb-xp8j.onrender.com"
+    WEBHOOK_URL = "https://bomber-2hra.onrender.com"
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -1140,7 +1140,7 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ])
         await update.message.reply_text(
             f"📱 Target number: <code>{phone}</code>\n\n"
-            "Please confirm to start CALL+SMS Bomber.",
+            "Please confirm to start <b>CALL+SMS</b> Bomber.",
             parse_mode=ParseMode.HTML,
             reply_markup=confirm_kb
         )
@@ -1325,13 +1325,27 @@ async def send_any_message(context, chat_id, update, text=None):
     return False
 
 # ------------------------------------------------------------------
+# Keep‑alive loop (self‑ping)
+# ------------------------------------------------------------------
+async def keep_alive_loop():
+    """Background task to ping the app every 10 minutes to prevent Render from sleeping."""
+    while True:
+        await asyncio.sleep(10 * 60)  # 10 minutes
+        try:
+            async with aiohttp.ClientSession() as session:
+                await session.get(WEBHOOK_URL)
+                logger.info("Self‑ping sent to keep alive")
+        except Exception as e:
+            logger.error(f"Self‑ping failed: {e}")
+
+# ------------------------------------------------------------------
 # Start command
 # ------------------------------------------------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     add_user(user.id, user.username, user.first_name)
     await update.message.reply_text(
-        f"Welcome {user.first_name}! 👋\n\nI'm here to assist you with CALL+SMS Bomber testing.\n\n"
+        f"Welcome {user.first_name}! 👋\n\nI'm here to assist you with <b>CALL+SMS</b> Bomber testing.\n\n"
         f"Use the buttons below to interact.",
         parse_mode=ParseMode.HTML,
         reply_markup=get_main_menu(user.id)
@@ -1369,6 +1383,9 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_input))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_error_handler(error_handler)
+
+    # Start the keep‑alive background task
+    asyncio.create_task(keep_alive_loop())
 
     if WEBHOOK_URL:
         webhook_url = f"{WEBHOOK_URL}/webhook"
