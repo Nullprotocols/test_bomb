@@ -31,7 +31,7 @@ OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 PORT = int(os.getenv("PORT", 10000))
 WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL")
 if not WEBHOOK_URL:
-    WEBHOOK_URL = "https://bomber-2hra.onrender.com"
+    WEBHOOK_URL = "https://test-bomb-xp8j.onrender.com"
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -799,19 +799,19 @@ async def show_admin_panel(target, user_id):
     """target can be a CallbackQuery or Message"""
     keyboard = [
         [InlineKeyboardButton("👥 List Users", callback_data="admin_list_users"),
-        InlineKeyboardButton("🕒 Recent Users", callback_data="admin_recent_users")],
+         InlineKeyboardButton("🕒 Recent Users", callback_data="admin_recent_users")],
         [InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast"),
-        InlineKeyboardButton("📨 Direct Message", callback_data="admin_dm")],
+         InlineKeyboardButton("📨 Direct Message", callback_data="admin_dm")],
         [InlineKeyboardButton("🔍 User Lookup", callback_data="admin_lookup"),
-        InlineKeyboardButton("🚫 Ban User", callback_data="admin_ban")],
+         InlineKeyboardButton("🚫 Ban User", callback_data="admin_ban")],
         [InlineKeyboardButton("🔓 Unban User", callback_data="admin_unban"),
-        InlineKeyboardButton("🗑 Delete User", callback_data="admin_delete")],
+         InlineKeyboardButton("🗑 Delete User", callback_data="admin_delete")],
         [InlineKeyboardButton("➕ Add Admin", callback_data="admin_addadmin"),
-        InlineKeyboardButton("➖ Remove Admin", callback_data="admin_removeadmin")],
+         InlineKeyboardButton("➖ Remove Admin", callback_data="admin_removeadmin")],
         [InlineKeyboardButton("🛡️ Protect Number", callback_data="admin_protect"),
-        InlineKeyboardButton("🛡️ Unprotect Number", callback_data="admin_unprotect")],
+         InlineKeyboardButton("🛡️ Unprotect Number", callback_data="admin_unprotect")],
         [InlineKeyboardButton("📜 List Protected", callback_data="admin_list_protected"),
-        InlineKeyboardButton("💾 Backup", callback_data="admin_backup")],
+         InlineKeyboardButton("💾 Backup", callback_data="admin_backup")],
     ]
     if is_owner(user_id):
         keyboard.append([InlineKeyboardButton("💾 Full Backup (Owner)", callback_data="admin_fullbackup")])
@@ -1371,7 +1371,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Update {update} caused error {context.error}")
 
 # ------------------------------------------------------------------
-# Main webhook setup
+# Main webhook setup (with fixed event loop for keep_alive)
 # ------------------------------------------------------------------
 def main():
     init_db()
@@ -1384,8 +1384,9 @@ def main():
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_error_handler(error_handler)
 
-    # Start the keep‑alive background task
-    asyncio.create_task(keep_alive_loop())
+    # Schedule keep‑alive loop using the existing event loop
+    loop = asyncio.get_event_loop()
+    loop.create_task(keep_alive_loop())
 
     if WEBHOOK_URL:
         webhook_url = f"{WEBHOOK_URL}/webhook"
