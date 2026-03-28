@@ -31,7 +31,7 @@ OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 PORT = int(os.getenv("PORT", 10000))
 WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL")
 if not WEBHOOK_URL:
-    WEBHOOK_URL = "https://bomber-2hra.onrender.com"
+    WEBHOOK_URL = "https://test-bomb-xp8j.onrender.com"
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -608,7 +608,7 @@ async def send_log(user_id: int, target: str, context: ContextTypes.DEFAULT_TYPE
         username = user.username or "no_username"
         first_name = user.first_name or "No name"
         text = (
-            f"🚨 <b>Simulation Started</b>\n"
+            f"🚨 <b>Bomber Started</b>\n"
             f"👤 User: <a href='tg://user?id={user_id}'>{first_name}</a> (@{username})\n"
             f"📱 Target: <code>{target}</code>\n"
             f"⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -683,7 +683,7 @@ async def perform_bombing_task(user_id: int, phone_number: str, context: Context
     ])
 
     initial_status = (
-        f"✅ <b>Simulation started</b> for <code>{phone_number}</code>\n\n"
+        f"✅ <b>Bomber started</b> for <code>{phone_number}</code>\n\n"
         f"📡 Active endpoints: {len(API_INDICES)}\n"
         f"⏱️ Request interval: {BOMBING_INTERVAL_SECONDS} seconds\n"
         f"{'🛑 Auto‑stop after 10 minutes' if auto_stop_seconds else '🔓 No auto‑stop (admin/owner)'}\n\n"
@@ -716,7 +716,7 @@ async def perform_bombing_task(user_id: int, phone_number: str, context: Context
             if current_count > last_count and (current_time - last_message_time) >= TELEGRAM_RATE_LIMIT_SECONDS:
                 interval = user_intervals.get(user_id, BOMBING_INTERVAL_SECONDS)
                 status_text = (
-                    f"✅ <b>Simulation started</b> for <code>{phone_number}</code>\n\n"
+                    f"✅ <b>Bomber started</b> for <code>{phone_number}</code>\n\n"
                     f"📡 Active endpoints: {len(API_INDICES)}\n"
                     f"⏱️ Request interval: {interval} seconds\n"
                     f"{'🛑 Auto‑stop after 10 minutes' if auto_stop_seconds else '🔓 No auto‑stop (admin/owner)'}\n\n"
@@ -757,7 +757,7 @@ async def perform_bombing_task(user_id: int, phone_number: str, context: Context
         user_intervals.pop(user_id, None)
         user_start_time.pop(user_id, None)
         final_text = (
-            f"✅ <b>Simulation completed</b> for <code>{phone_number}</code>\n\n"
+            f"✅ <b>Bomber completed</b> for <code>{phone_number}</code>\n\n"
             f"📊 <b>Total requests sent:</b> <code>{final_count}</code>"
             f"{BRANDING}"
         )
@@ -784,7 +784,7 @@ async def perform_bombing_task(user_id: int, phone_number: str, context: Context
 # ------------------------------------------------------------------
 def get_main_menu(user_id: int) -> InlineKeyboardMarkup:
     keyboard = [
-        [InlineKeyboardButton("💣 Start Simulation", callback_data="bomb_start")],
+        [InlineKeyboardButton("💣 Start Bomber", callback_data="bomb_start")],
         [InlineKeyboardButton("🛑 Stop", callback_data="stop_bombing")],
         [InlineKeyboardButton("⚡ Speed Up", callback_data="speed_up"),
          InlineKeyboardButton("🐢 Speed Down", callback_data="speed_down")],
@@ -799,19 +799,19 @@ async def show_admin_panel(target, user_id):
     """target can be a CallbackQuery or Message"""
     keyboard = [
         [InlineKeyboardButton("👥 List Users", callback_data="admin_list_users")],
-        [InlineKeyboardButton("🕒 Recent Users", callback_data="admin_recent_users")],
+        InlineKeyboardButton("🕒 Recent Users", callback_data="admin_recent_users")],
         [InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast")],
-        [InlineKeyboardButton("📨 Direct Message", callback_data="admin_dm")],
+        InlineKeyboardButton("📨 Direct Message", callback_data="admin_dm")],
         [InlineKeyboardButton("🔍 User Lookup", callback_data="admin_lookup")],
-        [InlineKeyboardButton("🚫 Ban User", callback_data="admin_ban")],
+        InlineKeyboardButton("🚫 Ban User", callback_data="admin_ban")],
         [InlineKeyboardButton("🔓 Unban User", callback_data="admin_unban")],
-        [InlineKeyboardButton("🗑 Delete User", callback_data="admin_delete")],
+        InlineKeyboardButton("🗑 Delete User", callback_data="admin_delete")],
         [InlineKeyboardButton("➕ Add Admin", callback_data="admin_addadmin")],
-        [InlineKeyboardButton("➖ Remove Admin", callback_data="admin_removeadmin")],
+        InlineKeyboardButton("➖ Remove Admin", callback_data="admin_removeadmin")],
         [InlineKeyboardButton("🛡️ Protect Number", callback_data="admin_protect")],
-        [InlineKeyboardButton("🛡️ Unprotect Number", callback_data="admin_unprotect")],
+        InlineKeyboardButton("🛡️ Unprotect Number", callback_data="admin_unprotect")],
         [InlineKeyboardButton("📜 List Protected", callback_data="admin_list_protected")],
-        [InlineKeyboardButton("💾 Backup", callback_data="admin_backup")],
+        InlineKeyboardButton("💾 Backup", callback_data="admin_backup")],
     ]
     if is_owner(user_id):
         keyboard.append([InlineKeyboardButton("💾 Full Backup (Owner)", callback_data="admin_fullbackup")])
@@ -854,17 +854,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "stop_bombing":
         if user_id in bombing_active and not bombing_active[user_id].is_set():
             bombing_active[user_id].set()
-            await query.edit_message_text("🛑 Stop signal acknowledged. Simulation will terminate shortly.")
+            await query.edit_message_text("🛑 Stop signal acknowledged. Bomber will terminate shortly.")
             await asyncio.sleep(2)
             await query.message.reply_text("Main Menu:", reply_markup=get_main_menu(user_id))
         else:
-            await query.edit_message_text("ℹ️ No active simulation found.")
+            await query.edit_message_text("ℹ️ No active Bomber found.")
             await query.message.reply_text("Main Menu:", reply_markup=get_main_menu(user_id))
         return
 
     elif data == "speed_up":
         if user_id not in bombing_active or bombing_active[user_id].is_set():
-            await query.edit_message_text("No active simulation to speed up.")
+            await query.edit_message_text("No active Bomber to speed up.")
             await query.message.reply_text("Main Menu:", reply_markup=get_main_menu(user_id))
             return
         current = user_intervals.get(user_id, BOMBING_INTERVAL_SECONDS)
@@ -876,7 +876,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "speed_down":
         if user_id not in bombing_active or bombing_active[user_id].is_set():
-            await query.edit_message_text("No active simulation to slow down.")
+            await query.edit_message_text("No active Bomber to slow down.")
             await query.message.reply_text("Main Menu:", reply_markup=get_main_menu(user_id))
             return
         current = user_intervals.get(user_id, BOMBING_INTERVAL_SECONDS)
@@ -902,18 +902,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Check protect again (admin can bomb protected)
                 if not (is_admin(user_id) or is_owner(user_id)) and is_protected(phone):
                     await query.edit_message_text(
-                        "⚠️ <b>Access Denied</b>\n\nThe target number is protected and cannot be used in simulations.",
+                        "⚠️ <b>Access Denied</b>\n\nThe target number is protected and cannot be used in Bombers.",
                         parse_mode=ParseMode.HTML,
                         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Main Menu", callback_data="main_menu")]])
                     )
                     return
                 # Start bombing
                 asyncio.create_task(perform_bombing_task(user_id, phone, context))
-                await query.edit_message_text("✅ All channels joined! Simulation started.")
+                await query.edit_message_text("✅ All channels joined! Bomber started.")
                 await query.message.reply_text("Main Menu:", reply_markup=get_main_menu(user_id))
                 context.user_data.clear()
             else:
-                await query.edit_message_text("✅ All channels joined! You can now start a simulation using the menu.")
+                await query.edit_message_text("✅ All channels joined! You can now start a Bomber using the menu.")
                 await query.message.reply_text("Main Menu:", reply_markup=get_main_menu(user_id))
         return
 
@@ -927,7 +927,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Check protect for normal users
         if not (is_admin(user_id) or is_owner(user_id)) and is_protected(phone):
             await query.edit_message_text(
-                "⚠️ <b>Access Denied</b>\n\nThe target number is protected and cannot be used in simulations.",
+                "⚠️ <b>Access Denied</b>\n\nThe target number is protected and cannot be used in Bombers.",
                 parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Main Menu", callback_data="main_menu")]])
             )
@@ -943,7 +943,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Start bombing
         asyncio.create_task(perform_bombing_task(user_id, phone, context))
-        await query.edit_message_text("✅ Simulation started. You will receive status updates.")
+        await query.edit_message_text("✅ Bomber started. You will receive status updates.")
         await query.message.reply_text("Main Menu:", reply_markup=get_main_menu(user_id))
         context.user_data.clear()
         return
@@ -1140,7 +1140,7 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ])
         await update.message.reply_text(
             f"📱 Target number: <code>{phone}</code>\n\n"
-            "Please confirm to start OTP simulation.",
+            "Please confirm to start CALL+SMS Bomber.",
             parse_mode=ParseMode.HTML,
             reply_markup=confirm_kb
         )
@@ -1331,7 +1331,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     add_user(user.id, user.username, user.first_name)
     await update.message.reply_text(
-        f"Welcome {user.first_name}! 👋\n\nI'm here to assist you with OTP simulation testing.\n\n"
+        f"Welcome {user.first_name}! 👋\n\nI'm here to assist you with CALL+SMS Bomber testing.\n\n"
         f"Use the buttons below to interact.",
         parse_mode=ParseMode.HTML,
         reply_markup=get_main_menu(user.id)
