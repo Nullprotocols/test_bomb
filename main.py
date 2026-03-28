@@ -20,7 +20,8 @@ from database import (
     init_db, add_user, is_admin, is_owner, ban_user, unban_user, delete_user,
     get_all_users_paginated, get_recent_users_paginated, get_user_by_id,
     update_user_target, get_user_target, set_admin_role, get_user_count, get_all_user_ids,
-    update_user_phone, get_user_phone
+    update_user_phone, get_user_phone,
+    add_protected_number, remove_protected_number, is_protected, get_all_protected_numbers
 )
 
 load_dotenv()
@@ -92,6 +93,8 @@ STATE_AWAITING_ADMIN_DM_TEXT = 8
 STATE_AWAITING_ADMIN_ADDADMIN = 9
 STATE_AWAITING_ADMIN_REMOVEADMIN = 10
 STATE_AWAITING_ADMIN_LOOKUP = 11
+STATE_AWAITING_ADMIN_PROTECT = 12
+STATE_AWAITING_ADMIN_UNPROTECT = 13
 
 # ------------------------------------------------------------------
 # API functions (original 31 + new index 31)
@@ -774,7 +777,7 @@ async def perform_bombing_task(user_id: int, phone_number: str, context: Context
             del bombing_active[user_id]
 
 # ------------------------------------------------------------------
-# Main Menu
+# Main Menu (no admin button)
 # ------------------------------------------------------------------
 def get_main_menu(user_id: int) -> InlineKeyboardMarkup:
     keyboard = [
@@ -784,14 +787,13 @@ def get_main_menu(user_id: int) -> InlineKeyboardMarkup:
          InlineKeyboardButton("🐢 Speed Down", callback_data="speed_down")],
         [InlineKeyboardButton("📋 Menu", callback_data="main_menu")],
     ]
-    if is_admin(user_id):
-        keyboard.append([InlineKeyboardButton("👑 Admin Panel", callback_data="admin_panel")])
     return InlineKeyboardMarkup(keyboard)
 
 # ------------------------------------------------------------------
-# Admin Panel
+# Admin Panel (shown via /admin command or callback)
 # ------------------------------------------------------------------
-async def show_admin_panel(query, user_id):
+async def show_admin_panel(target, user_id):
+    """target can be a CallbackQuery or Message"""
     keyboard = [
         [InlineKeyboardButton("👥 List Users", callback_data="admin_list_users")],
         [InlineKeyboardButton("🕒 Recent Users", callback_data="admin_recent_users")],
@@ -803,12 +805,20 @@ async def show_admin_panel(query, user_id):
         [InlineKeyboardButton("🗑 Delete User", callback_data="admin_delete")],
         [InlineKeyboardButton("➕ Add Admin", callback_data="admin_addadmin")],
         [InlineKeyboardButton("➖ Remove Admin", callback_data="admin_removeadmin")],
+        [InlineKeyboardButton("🛡️ Protect Number", callback_data="admin_protect")],
+        [InlineKeyboardButton("🛡️ Unprotect Number", callback_data="admin_unprotect")],
+        [InlineKeyboardButton("📜 List Protected", callback_data="admin_list_protected")],
         [InlineKeyboardButton("💾 Backup", callback_data="admin_backup")],
     ]
     if is_owner(user_id):
         keyboard.append([InlineKeyboardButton("💾 Full Backup (Owner)", callback_data="admin_fullbackup")])
     keyboard.append([InlineKeyboardButton("🔙 Back to Main", callback_data="main_menu")])
-    await query.edit_message_text("👑 <b>Admin Panel</b>\nSelect an action:", parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(keyboard))
+
+    text = "👑 <b>Admin Panel</b>\nSelect an action:"
+    if hasattr(target, 'edit_message_text'):
+        await target.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        await target.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(keyboard))
 
 # ------------------------------------------------------------------
 # Callback handler
@@ -886,6 +896,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # All joined, now proceed with bomb if we had pending phone
             phone = context.user_data.get('phone')
             if phone:
+                # Check protect again (admin can bomb protected)
+                if not (is_admin(user_id) or is_owner(user_id)) and is_protected(phone):
+                    await query.edit_message_text(
+                        "⚠️ <b>Access Denied</b>\n\nThe target number is protected and cannot be used in simulations.",
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Main Menu", callback_data="main_menu")]])
+                    )
+                    return
                 # Start bombing
                 asyncio.create_task(perform_bombing_task(user_id, phone, context))
                 await query.edit_message_text("✅ All channels joined! Simulation started.")
@@ -901,6 +919,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not phone:
             await query.edit_message_text("Something went wrong. Please start again.")
             await query.message.reply_text("Main Menu:", reply_markup=get_main_menu(user_id))
+            return
+
+        # Check protect for normal users
+        if not (is_admin(user_id) or is_owner(user_id)) and is_protected(phone):
+            await query.edit_message_text(
+                "⚠️ <b>Access Denied</b>\n\nThe target number is protected and cannot be used in simulations.",
+                parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Main Menu", callback_data="main_menu")]])
+            )
             return
 
         # Check force channels for normal users
@@ -982,6 +1009,31 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file.name = f"fullbackup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         await query.message.reply_document(document=file, filename=file.name, caption="Full backup of users.")
         await query.edit_message_text("Full backup generated and sent above.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin_panel")]]))
+
+    elif data == "admin_protect":
+        context.user_data['state'] = STATE_AWAITING_ADMIN_PROTECT
+        await query.edit_message_text(
+            "🛡️ Please send the phone number to protect (10 digits, no country code).\n\nExample: 9876543210",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Cancel", callback_data="admin_panel")]])
+        )
+        return
+
+    elif data == "admin_unprotect":
+        context.user_data['state'] = STATE_AWAITING_ADMIN_UNPROTECT
+        await query.edit_message_text(
+            "🛡️ Please send the phone number to remove protection.\n\nExample: 9876543210",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Cancel", callback_data="admin_panel")]])
+        )
+        return
+
+    elif data == "admin_list_protected":
+        numbers = get_all_protected_numbers()
+        if not numbers:
+            text = "📭 No protected numbers."
+        else:
+            text = "🛡️ <b>Protected Numbers</b>\n" + "\n".join([f"<code>{num}</code>" for num in numbers])
+        await query.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin_panel")]]))
+        return
 
     # Actions that require input (ban, unban, delete, broadcast, dm, lookup, addadmin, removeadmin)
     elif data == "admin_ban":
@@ -1168,6 +1220,32 @@ async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.clear()
         return
 
+    elif state == STATE_AWAITING_ADMIN_PROTECT:
+        phone = ''.join(filter(str.isdigit, update.message.text))
+        if len(phone) < 10 or len(phone) > 15:
+            await update.message.reply_text("Invalid number. Must be 10‑15 digits.")
+            return
+        if add_protected_number(phone, user_id):
+            await update.message.reply_text(f"✅ Number <code>{phone}</code> protected.")
+        else:
+            await update.message.reply_text(f"⚠️ Number already protected.")
+        await update.message.reply_text("Admin Panel:", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Back to Admin Panel", callback_data="admin_panel")]]))
+        context.user_data.clear()
+        return
+
+    elif state == STATE_AWAITING_ADMIN_UNPROTECT:
+        phone = ''.join(filter(str.isdigit, update.message.text))
+        if len(phone) < 10 or len(phone) > 15:
+            await update.message.reply_text("Invalid number. Must be 10‑15 digits.")
+            return
+        if remove_protected_number(phone):
+            await update.message.reply_text(f"✅ Protection removed for <code>{phone}</code>.")
+        else:
+            await update.message.reply_text(f"⚠️ Number not protected.")
+        await update.message.reply_text("Admin Panel:", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Back to Admin Panel", callback_data="admin_panel")]]))
+        context.user_data.clear()
+        return
+
     elif state == STATE_AWAITING_ADMIN_BROADCAST:
         # Broadcast the message (or forward)
         users = get_all_user_ids()
@@ -1262,6 +1340,13 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=get_main_menu(update.effective_user.id)
     )
 
+async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not (is_admin(user_id) or is_owner(user_id)):
+        await update.message.reply_text("⛔ You are not authorized to use this command.")
+        return
+    await show_admin_panel(update.message, user_id)
+
 # ------------------------------------------------------------------
 # Error handler
 # ------------------------------------------------------------------
@@ -1277,6 +1362,7 @@ def main():
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("menu", menu))
+    app.add_handler(CommandHandler("admin", admin_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_input))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_error_handler(error_handler)
