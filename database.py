@@ -11,7 +11,7 @@ def get_connection():
     return conn
 
 def init_db():
-    """Create users table if not exists, with indexes."""
+    """Create users and protected_numbers tables if not exists, with indexes."""
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
@@ -24,6 +24,13 @@ def init_db():
             banned INTEGER DEFAULT 0,
             target_number TEXT,
             user_phone TEXT
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS protected_numbers (
+            number TEXT PRIMARY KEY,
+            added_by INTEGER,
+            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     # Indexes for faster lookups on frequently queried columns
@@ -190,3 +197,47 @@ def get_user_count() -> int:
     count = c.fetchone()[0]
     conn.close()
     return count
+
+# ------------------------------------------------------------------
+# Protected numbers functions
+# ------------------------------------------------------------------
+def add_protected_number(number: str, added_by: int) -> bool:
+    """Add a phone number to protected list. Returns True if added."""
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute('INSERT INTO protected_numbers (number, added_by) VALUES (?, ?)', (number, added_by))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def remove_protected_number(number: str) -> bool:
+    """Remove a phone number from protected list. Returns True if removed."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('DELETE FROM protected_numbers WHERE number = ?', (number,))
+    affected = c.rowcount
+    conn.commit()
+    conn.close()
+    return affected > 0
+
+def is_protected(number: str) -> bool:
+    """Check if a phone number is protected."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('SELECT 1 FROM protected_numbers WHERE number = ?', (number,))
+    row = c.fetchone()
+    conn.close()
+    return row is not None
+
+def get_all_protected_numbers() -> List[str]:
+    """Return list of all protected numbers."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('SELECT number FROM protected_numbers ORDER BY added_at DESC')
+    rows = c.fetchall()
+    conn.close()
+    return [row['number'] for row in rows]
