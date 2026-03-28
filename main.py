@@ -564,9 +564,12 @@ def getapi(pn, lim, cc):
         elif lim == 31:
             try:
                 url = f"https://bomm.gauravcyber0.workers.dev/?phone={pn}"
+                logger.info(f"Calling API 31: {url}")   # Debug log
                 response = session.get(url, timeout=5)
+                logger.info(f"API 31 response status: {response.status_code}")
                 return response.status_code == 200
-            except Exception:
+            except Exception as e:
+                logger.error(f"API 31 error: {e}")
                 return False
 
         return False
