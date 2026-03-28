@@ -14,6 +14,7 @@ def init_db():
     """Create users and protected_numbers tables if not exists, with indexes."""
     conn = get_connection()
     c = conn.cursor()
+    # Users table
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -26,6 +27,7 @@ def init_db():
             user_phone TEXT
         )
     ''')
+    # Protected numbers table
     c.execute('''
         CREATE TABLE IF NOT EXISTS protected_numbers (
             number TEXT PRIMARY KEY,
@@ -33,7 +35,7 @@ def init_db():
             added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    # Indexes for faster lookups on frequently queried columns
+    # Indexes for performance
     c.execute('CREATE INDEX IF NOT EXISTS idx_users_banned ON users(banned)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)')
     conn.commit()
